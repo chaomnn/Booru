@@ -1,16 +1,16 @@
-package baka.chaomian.booru
+package baka.chaomian.booru.ui
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import baka.chaomian.booru.data.Post
 import baka.chaomian.booru.databinding.PostGridItemBinding
 import com.squareup.picasso.Picasso
 
 class PostsAdapter(private val onClickListener: OnPictureClickListener) :
-    ListAdapter<Post, PostsAdapter.PostViewHolder>(DiffCallback) {
+    PagingDataAdapter<Post, PostsAdapter.PostViewHolder>(DiffCallback) {
 
     class PostViewHolder(var binding: PostGridItemBinding) :
         RecyclerView.ViewHolder(binding.root)
@@ -21,7 +21,7 @@ class PostsAdapter(private val onClickListener: OnPictureClickListener) :
 
     override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
         val post = getItem(position)
-        val previewUrl = post.previewUrl
+        val previewUrl = post!!.previewUrl
         val image = holder.binding.image
         Picasso.get().load(previewUrl).into(image)
         image.setOnClickListener {

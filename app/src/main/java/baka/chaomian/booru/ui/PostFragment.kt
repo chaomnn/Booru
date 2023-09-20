@@ -1,4 +1,4 @@
-package baka.chaomian.booru
+package baka.chaomian.booru.ui
 
 import android.Manifest
 import android.content.ContentValues
@@ -21,6 +21,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import baka.chaomian.booru.R
 import baka.chaomian.booru.data.Post
 import baka.chaomian.booru.databinding.FragmentPostBinding
 import baka.chaomian.booru.viewmodel.DownloadViewModel

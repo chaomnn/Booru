@@ -1,14 +1,22 @@
-package baka.chaomian.booru
+package baka.chaomian.booru.ui
 
 import android.os.Bundle
 import android.view.View
 import androidx.core.os.bundleOf
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.paging.LoadState
 import androidx.recyclerview.widget.GridLayoutManager
+import baka.chaomian.booru.R
 import baka.chaomian.booru.databinding.FragmentBooruBinding
 import baka.chaomian.booru.viewmodel.MainViewModel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class BooruFragment : Fragment(R.layout.fragment_booru) {
 
@@ -26,24 +34,25 @@ class BooruFragment : Fragment(R.layout.fragment_booru) {
         binding = FragmentBooruBinding.bind(view)
         val progressBar = binding.progressBar
         val errorView = binding.errorView
+        val posts = viewModel.pagingDataFlow
         val recyclerView = binding.picsRecycler
         val postsAdapter = PostsAdapter(PostsAdapter.OnPictureClickListener { post ->
             setFragmentResult(KEY_FRAGMENT, bundleOf(Pair(KEY_POST, post)))
         })
-        viewModel.posts.observe(viewLifecycleOwner) {
-            postsAdapter.submitList(it)
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                posts.collectLatest { posts ->
+                    postsAdapter.submitData(posts)
+                }
+            }
         }
-        viewModel.status.observe(viewLifecycleOwner) { status ->
-            when (status!!) {
-                MainViewModel.Status.ERROR -> {
-                    progressBar.visibility = View.GONE
-                    errorView.visibility = View.VISIBLE
-                }
-                MainViewModel.Status.LOADING -> {
-                    progressBar.visibility = View.VISIBLE
-                }
-                MainViewModel.Status.DONE -> {
-                    progressBar.visibility = View.GONE
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                postsAdapter.loadStateFlow.collect { states ->
+                    progressBar.isVisible = states.source.prepend is LoadState.Loading ||
+                            states.source.append is LoadState.Loading
+                    errorView.isVisible = states.source.prepend is LoadState.Error ||
+                            states.source.append is LoadState.Error
                 }
             }
         }

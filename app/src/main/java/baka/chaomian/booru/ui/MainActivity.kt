@@ -1,4 +1,4 @@
-package baka.chaomian.booru
+package baka.chaomian.booru.ui
 
 import android.graphics.Color
 import android.os.Build
@@ -9,6 +9,7 @@ import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import baka.chaomian.booru.R
 import baka.chaomian.booru.data.Post
 import baka.chaomian.booru.databinding.ActivityMainBinding
 import com.google.android.material.navigation.NavigationView
@@ -31,7 +32,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         if (savedInstanceState == null) {
-            fragmentManager.setFragmentResultListener(KEY_FRAGMENT, this) {_, bundle ->
+            fragmentManager.setFragmentResultListener(KEY_FRAGMENT, this) { _, bundle ->
                 val post: Post = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     bundle.getParcelable(KEY_POST, Post::class.java)!!
                 } else {
