@@ -7,13 +7,19 @@ import kotlinx.coroutines.flow.Flow
 
 class PostRepository {
 
+    companion object {
+        private const val PAGE_SIZE = 10
+    }
+
     fun getAllPosts(): Flow<PagingData<Post>> {
         return Pager(
             config = PagingConfig(
-                pageSize = 10,
+                pageSize = PAGE_SIZE,
                 enablePlaceholders = false
             ),
             pagingSourceFactory = { PostPagingSource() }
         ).flow
     }
+
+
 }

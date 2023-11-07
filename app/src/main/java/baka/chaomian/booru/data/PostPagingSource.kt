@@ -7,7 +7,6 @@ import baka.chaomian.booru.network.DanbooruService
 class PostPagingSource : PagingSource<Int, Post>() {
 
     override fun getRefreshKey(state: PagingState<Int, Post>): Int? {
-        // TODO check
         println("anchorPosition ${state.anchorPosition}")
         return state.anchorPosition?.let { anchorPosition ->
             state.closestPageToPosition(anchorPosition)?.prevKey?.plus(1)
@@ -33,6 +32,7 @@ class PostPagingSource : PagingSource<Int, Post>() {
                 prevKey = if (page == 1) null else page - 1,
                 nextKey = nextPage)
         } catch (e: Exception) {
+            println(e)
             return LoadResult.Error(e)
         }
     }

@@ -1,8 +1,13 @@
 package baka.chaomian.booru.ui
 
 import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import androidx.core.os.bundleOf
+import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
@@ -14,6 +19,7 @@ import androidx.paging.LoadState
 import androidx.recyclerview.widget.GridLayoutManager
 import baka.chaomian.booru.R
 import baka.chaomian.booru.databinding.FragmentBooruBinding
+import baka.chaomian.booru.databinding.ToolbarSearchViewBinding
 import baka.chaomian.booru.viewmodel.MainViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -49,15 +55,39 @@ class BooruFragment : Fragment(R.layout.fragment_booru) {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 postsAdapter.loadStateFlow.collect { states ->
-                    progressBar.isVisible = states.source.prepend is LoadState.Loading ||
-                            states.source.append is LoadState.Loading
-                    errorView.isVisible = states.source.prepend is LoadState.Error ||
-                            states.source.append is LoadState.Error
+                    val prepend = states.source.prepend
+                    val append = states.source.append
+                    progressBar.isVisible = prepend is LoadState.Loading || append is LoadState.Loading
+                    errorView.isVisible = prepend is LoadState.Error || append is LoadState.Error
+                    binding.swipeRefresh.isRefreshing = states.source.refresh is LoadState.Loading &&
+                            progressBar.isVisible == false
                 }
             }
         }
         recyclerView.adapter = postsAdapter
         val layoutManager = GridLayoutManager(context, 2)
         recyclerView.layoutManager = layoutManager
+
+        requireActivity().addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.menu_toolbar, menu)
+                val searchView = ToolbarSearchViewBinding.inflate(LayoutInflater.from(requireContext())).root
+                menu.findItem(R.id.search).actionView = searchView
+                searchView.queryHint = getString(R.string.search)
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                when (menuItem.itemId) {
+                    R.id.refresh -> {
+                        postsAdapter.refresh()
+                    }
+                }
+                return true
+            }
+        }, viewLifecycleOwner)
+
+        binding.swipeRefresh.setOnRefreshListener {
+            postsAdapter.refresh()
+        }
     }
 }

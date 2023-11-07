@@ -10,6 +10,9 @@ interface DanbooruService {
     @GET("posts.json")
     suspend fun getPosts(@Query("page") page: Int): List<DanbooruPost>
 
+    @GET("posts.json")
+    suspend fun searchByTags(@Query("page") page: Int, @Query("tags") tags: String): List<DanbooruPost>
+
     companion object {
         private const val DANBOORU_URL = "https://danbooru.donmai.us/"
 

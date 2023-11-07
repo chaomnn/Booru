@@ -31,9 +31,7 @@ class DownloadViewModel : ViewModel() {
                 if (response.isSuccessful) {
                     continuation.resume(response)
                 } else {
-                    continuation.cancel()
-                    println("Error: response code ${response.code()}")
-//                    continuation.resumeWithException(Exception("Error: ${response.code()}"))
+                    continuation.resumeWithException(Exception("Error: ${response.code()}"))
                 }
             }
 

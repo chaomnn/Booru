@@ -1,7 +1,8 @@
 <resources>
     <string name="app_name">Booru</string>
     <string name="danbooru">Danbooru</string>
-    <string name="tags">Search by tags</string>
+    <string name="search">Search by tags</string>
+    <string name="refresh">Refresh</string>
     <string name="view_original">View original</string>
     <string name="save_to_gallery">Save to gallery</string>
     <string name="error">An error occurred</string>
