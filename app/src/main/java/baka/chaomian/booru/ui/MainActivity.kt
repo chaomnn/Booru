@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 fragmentManager
                     .beginTransaction()
                     .setReorderingAllowed(true)
-                    .add(binding.container.id, PostFragment(post), null)
+                    .replace(binding.container.id, PostFragment(post), null)
                     .addToBackStack(null)
                     .commit()
             }

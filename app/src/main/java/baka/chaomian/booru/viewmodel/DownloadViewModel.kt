@@ -44,7 +44,6 @@ class DownloadViewModel : ViewModel() {
         }
     }
 
-    // withContext(Dispatchers.IO)
     suspend fun downloadImage(url: String, filename: String, cacheDir: File) {
         val image: File = withContext(Dispatchers.IO) {
             val request = Request.Builder()

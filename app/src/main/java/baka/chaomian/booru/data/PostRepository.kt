@@ -11,15 +11,13 @@ class PostRepository {
         private const val PAGE_SIZE = 10
     }
 
-    fun getAllPosts(): Flow<PagingData<Post>> {
+    fun getPosts(query: String?): Flow<PagingData<Post>> {
         return Pager(
             config = PagingConfig(
                 pageSize = PAGE_SIZE,
                 enablePlaceholders = false
             ),
-            pagingSourceFactory = { PostPagingSource() }
+            pagingSourceFactory = { PostPagingSource(query) }
         ).flow
     }
-
-
 }

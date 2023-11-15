@@ -81,7 +81,6 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
         menuHost.addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
                 menuInflater.inflate(R.menu.menu_overflow, menu)
-                menu.findItem(R.id.refresh).setVisible(false)
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
