@@ -16,9 +16,9 @@ import com.google.android.material.navigation.NavigationView
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
-    private lateinit var binding : ActivityMainBinding
+    private lateinit var binding: ActivityMainBinding
     private lateinit var drawerToggle: ActionBarDrawerToggle
-    private lateinit var drawer : DrawerLayout
+    private lateinit var drawer: DrawerLayout
 
     private val fragmentManager = supportFragmentManager
 

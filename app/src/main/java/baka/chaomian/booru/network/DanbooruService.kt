@@ -13,6 +13,17 @@ interface DanbooruService {
     @GET("posts.json")
     suspend fun getPostsByTags(@Query("page") page: Int, @Query("tags") query: String): List<DanbooruPost>
 
+//    @GET("tags.json")
+//    suspend fun getTags(@Query("search[name_or_alias_matches]") name: String,
+//                        @Query("search[hide_empty]") hideEmpty: String = "yes",
+//                        @Query("search[order]") order: String = "count"):
+//            List<DanbooruTag>
+
+    @GET("autocomplete.json")
+    suspend fun getTags(@Query("search[query]") name: String,
+                            @Query("search[type]") type: String = "tag_query",
+                            @Query("limit") limit: Int = 10): List<DanbooruTag>
+
     companion object {
         private const val DANBOORU_URL = "https://danbooru.donmai.us/"
 

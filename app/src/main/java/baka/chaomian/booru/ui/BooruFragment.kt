@@ -1,6 +1,10 @@
 package baka.chaomian.booru.ui
 
+import android.annotation.SuppressLint
+import android.app.SearchManager
+import android.database.MatrixCursor
 import android.os.Bundle
+import android.provider.BaseColumns
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -11,6 +15,8 @@ import androidx.appcompat.widget.SearchView
 import androidx.core.os.bundleOf
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
+import androidx.cursoradapter.widget.CursorAdapter
+import androidx.cursoradapter.widget.SimpleCursorAdapter
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
 import androidx.fragment.app.viewModels
@@ -21,6 +27,7 @@ import androidx.paging.LoadState
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import baka.chaomian.booru.R
+import baka.chaomian.booru.data.Tag
 import baka.chaomian.booru.databinding.FragmentBooruBinding
 import baka.chaomian.booru.databinding.ToolbarSearchViewBinding
 import baka.chaomian.booru.viewmodel.MainViewModel
@@ -29,23 +36,22 @@ import kotlinx.coroutines.launch
 
 class BooruFragment : Fragment(R.layout.fragment_booru) {
 
-    private lateinit var binding : FragmentBooruBinding
-    private lateinit var searchQuery: String
+    private lateinit var binding: FragmentBooruBinding
     private lateinit var recyclerView: RecyclerView
     private lateinit var postsAdapter: PostsAdapter
+
+    private var searchQuery: String = ""
 
     private val viewModel: MainViewModel by viewModels()
 
     companion object {
         private const val KEY_FRAGMENT = "switch_fragment"
         private const val KEY_POST = "post"
-        private const val STATE_SEARCH_QUERY = "search"
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding = FragmentBooruBinding.bind(view)
-        searchQuery = savedInstanceState?.getString(STATE_SEARCH_QUERY).orEmpty()
         val progressBar = binding.progressBar
         val errorView = binding.errorView
         val posts = viewModel.pagingDataFlow
@@ -77,6 +83,13 @@ class BooruFragment : Fragment(R.layout.fragment_booru) {
         recyclerView.layoutManager = layoutManager
 
         val searchView = ToolbarSearchViewBinding.inflate(LayoutInflater.from(requireContext())).root
+        val suggestionAdapter: CursorAdapter = SimpleCursorAdapter(context,
+            android.R.layout.simple_list_item_1,
+            null,
+            arrayOf(SearchManager.SUGGEST_COLUMN_TEXT_1),
+            intArrayOf(android.R.id.text1),
+            0
+        )
 
         requireActivity().addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
@@ -94,23 +107,68 @@ class BooruFragment : Fragment(R.layout.fragment_booru) {
                         }
 
                         override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
-                            submitSearchQuery("")
+                            searchQuery = ""
+                            submitSearchQuery()
                             return true
                         }
-
                     })
                 }
                 searchView.apply {
+                    @SuppressLint("RestrictedApi")
+                    findViewById<SearchView.SearchAutoComplete>(androidx.appcompat.R.id.search_src_text).threshold = 1
                     queryHint = getString(R.string.search)
-                    setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-                        override fun onQueryTextSubmit(query: String): Boolean {
-                            searchView.clearFocus()
-                            submitSearchQuery(query)
-                            return true
+                    suggestionsAdapter = suggestionAdapter
+                    val suggestions: ArrayList<Tag> = arrayListOf()
+                    setOnSuggestionListener(object : SearchView.OnSuggestionListener {
+                        override fun onSuggestionSelect(position: Int): Boolean {
+                            return false
                         }
 
-                        override fun onQueryTextChange(newText: String?): Boolean {
+                        override fun onSuggestionClick(position: Int): Boolean {
+                            searchQuery = if (searchQuery.lastIndexOf(" ") > 0) {
+                                searchQuery.replaceAfterLast(" ", "${suggestions[position].name} ")
+                            } else {
+                                "${suggestions[position].name} "
+                            }
+                            setQuery(searchQuery, false)
+                            suggestions.clear()
                             return true
+                        }
+                    })
+
+                    setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                        override fun onQueryTextSubmit(query: String): Boolean {
+                            submitSearchQuery()
+                            clearFocus()
+                            suggestionsAdapter.cursor.close()
+                            return false
+                        }
+
+                        override fun onQueryTextChange(newText: String): Boolean {
+                            if (!isVisible() || newText.isEmpty() || newText.endsWith(" ")) {
+                                // Fragment was replaced or query is empty
+                                return true
+                            }
+                            // TODO 12.12.23 Fix search showing on space
+                            searchQuery = newText
+                            val lastTag = searchQuery.split(" ").last()
+                            viewModel.getTags(lastTag)
+                            viewModel.tags.observe(viewLifecycleOwner) { tags ->
+                                suggestions.clear()
+                                suggestions.addAll(tags)
+                                val cursor = MatrixCursor(arrayOf(
+                                    BaseColumns._ID,
+                                    SearchManager.SUGGEST_COLUMN_TEXT_1,
+                                    SearchManager.SUGGEST_COLUMN_INTENT_DATA
+                                ))
+                                suggestions.forEachIndexed { index, tag ->
+                                    val text = if (tag.antecedent != null) "${tag.antecedent} → ${tag.label}" else
+                                        tag.label
+                                    cursor.addRow(arrayOf(index.toString(), text, tag.name))
+                                }
+                                suggestionAdapter.swapCursor(cursor)
+                            }
+                            return false
                         }
                     })
                 }
@@ -131,14 +189,8 @@ class BooruFragment : Fragment(R.layout.fragment_booru) {
         }
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putString(STATE_SEARCH_QUERY, searchQuery)
-    }
-
-    private fun submitSearchQuery(query: String) {
+    private fun submitSearchQuery() {
         recyclerView.scrollToPosition(0)
-        searchQuery = query
         viewModel.onSearchQueryChanged(searchQuery)
         postsAdapter.refresh()
     }
