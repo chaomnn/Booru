@@ -7,4 +7,7 @@
     <string name="save_to_gallery">Save to gallery</string>
     <string name="error">An error occurred</string>
     <string name="missing_permission">Permission not granted</string>
+    <string name="login">Log in</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
 </resources>

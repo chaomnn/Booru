@@ -75,7 +75,7 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
         filename = "${post.id}.jpg"
         showImage()
         imageView.setOnClickListener {
-            parentFragmentManager.popBackStack()
+            requireActivity().onBackPressedDispatcher.onBackPressed()
         }
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
