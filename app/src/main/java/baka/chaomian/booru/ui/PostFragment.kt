@@ -2,7 +2,9 @@ package baka.chaomian.booru.ui
 
 import android.Manifest
 import android.content.ContentValues
+import android.content.Intent
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -14,6 +16,7 @@ import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
 import androidx.core.os.bundleOf
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
@@ -58,6 +61,7 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
     companion object {
         private const val KEY_POST = "post"
         private const val ORIGINAL = "original_"
+        private const val MIME_TYPE_IMAGE = "image/jpeg"
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -99,6 +103,21 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
                             saveToGallery()
                         }
                     }
+
+                    R.id.share -> {
+                        val fileUri: Uri =
+                            FileProvider.getUriForFile(
+                                requireContext(),
+                                requireContext().packageName + ".fileprovider",
+                                viewModel.file.value!!)
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            type = MIME_TYPE_IMAGE
+                            putExtra(Intent.EXTRA_STREAM, fileUri)
+                            setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        startActivity(Intent.createChooser(shareIntent, null))
+                    }
                 }
                 return true
             }
@@ -113,7 +132,7 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         val imageDetails = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+            put(MediaStore.MediaColumns.MIME_TYPE, MIME_TYPE_IMAGE)
             put(MediaStore.MediaColumns.DATE_ADDED, System.currentTimeMillis())
             // TODO save to own image folder
         }

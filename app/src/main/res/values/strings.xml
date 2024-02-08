@@ -5,6 +5,7 @@
     <string name="refresh">Refresh</string>
     <string name="view_original">View original</string>
     <string name="save_to_gallery">Save to gallery</string>
+    <string name="share">Share</string>
     <string name="error">An error occurred</string>
     <string name="missing_permission">Permission not granted</string>
     <string name="login">Log in</string>
