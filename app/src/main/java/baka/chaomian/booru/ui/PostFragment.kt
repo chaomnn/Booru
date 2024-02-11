@@ -8,10 +8,12 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.Toast
@@ -23,13 +25,12 @@ import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
 import baka.chaomian.booru.R
 import baka.chaomian.booru.data.Post
 import baka.chaomian.booru.databinding.FragmentPostBinding
 import baka.chaomian.booru.viewmodel.DownloadViewModel
 import java.io.File
-import kotlinx.coroutines.launch
+import java.io.FileInputStream
 
 class PostFragment() : Fragment(R.layout.fragment_post) {
 
@@ -47,8 +48,6 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
     private lateinit var post: Post
     private lateinit var filename: String
 
-    private var isOriginal = false
-
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
@@ -64,6 +63,31 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
         private const val MIME_TYPE_IMAGE = "image/jpeg"
     }
 
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        viewModel.file.observe(viewLifecycleOwner) { file ->
+            FileInputStream(file.absolutePath).use { input ->
+                val fd = input.fd
+                val options = BitmapFactory.Options()
+                options.inJustDecodeBounds = true
+                BitmapFactory.decodeFileDescriptor(fd, null, options)
+                options.inJustDecodeBounds = false
+                // TODO
+                val scale = minOf(
+                    options.outWidth.toFloat() / resources.displayMetrics.widthPixels,
+                    options.outHeight.toFloat() / resources.displayMetrics.heightPixels,
+                    options.outWidth.toFloat() / resources.displayMetrics.heightPixels,
+                    options.outHeight.toFloat() / resources.displayMetrics.widthPixels
+                )
+                options.inSampleSize = maxOf(1, scale.toInt().takeHighestOneBit())
+                val bitmap = BitmapFactory.decodeFileDescriptor(fd, null, options)
+                imageView.setImageBitmap(bitmap)
+            }
+            progressBar.visibility = View.GONE
+
+        }
+        return super.onCreateView(inflater, container, savedInstanceState)
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding = FragmentPostBinding.bind(view)
@@ -77,7 +101,7 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
             arguments.getParcelable(KEY_POST)!!
         }
         filename = "${post.id}.jpg"
-        showImage()
+        viewModel.downloadImage(post.largeUrl, filename, requireContext().cacheDir)
         imageView.setOnClickListener {
             requireActivity().onBackPressedDispatcher.onBackPressed()
         }
@@ -91,9 +115,8 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
                 when (menuItem.itemId) {
                     R.id.view_original -> {
                         progressBar.visibility = View.VISIBLE
-                        isOriginal = true
                         filename = ORIGINAL + filename
-                        showImage()
+                        viewModel.downloadImage(post.originalUrl, filename, requireContext().cacheDir)
                     }
 
                     R.id.save_to_gallery -> {
@@ -140,18 +163,6 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
         contentResolver.openOutputStream(uri).use { stream ->
             val file = File(requireContext().cacheDir.path, filename)
             stream!!.write(file.readBytes())
-        }
-    }
-
-    private fun showImage() {
-        lifecycleScope.launch {
-            val url = if (isOriginal) post.originalUrl else post.largeUrl
-            viewModel.downloadImage(url, filename, requireContext().cacheDir)
-            viewModel.file.observe(viewLifecycleOwner) { file ->
-                val bitmap = BitmapFactory.decodeFile(file.absolutePath)
-                imageView.setImageBitmap(bitmap)
-                progressBar.visibility = View.GONE
-            }
         }
     }
 }

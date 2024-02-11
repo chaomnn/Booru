@@ -3,12 +3,14 @@ package baka.chaomian.booru.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import java.io.File
 import java.io.IOException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.Call
@@ -44,37 +46,39 @@ class DownloadViewModel : ViewModel() {
         }
     }
 
-    suspend fun downloadImage(url: String, filename: String, cacheDir: File) {
-        val image: File = withContext(Dispatchers.IO) {
-            val request = Request.Builder()
-                .url(url)
-                .build()
-            client.newCall(request).await().use { response ->
-                if (response.isSuccessful) {
-                    val image = File(cacheDir, filename)
-                    try {
-                        Okio.buffer(Okio.sink(image)).use { sink ->
-                            val buffer = sink.buffer()
-                            response.body()!!.source().use { source ->
-                                while (true) {
-                                    ensureActive()
-                                    if (source.read(buffer, 8 * 1024) < 0) {
-                                        break
+    fun downloadImage(url: String, filename: String, cacheDir: File) {
+        viewModelScope.launch {
+            val image: File = withContext(Dispatchers.IO) {
+                val request = Request.Builder()
+                    .url(url)
+                    .build()
+                client.newCall(request).await().use { response ->
+                    if (response.isSuccessful) {
+                        val image = File(cacheDir, filename)
+                        try {
+                            Okio.buffer(Okio.sink(image)).use { sink ->
+                                val buffer = sink.buffer()
+                                response.body()!!.source().use { source ->
+                                    while (true) {
+                                        ensureActive()
+                                        if (source.read(buffer, 8 * 1024) < 0) {
+                                            break
+                                        }
                                     }
                                 }
                             }
+                            ensureActive()
+                            image
+                        } catch (e: Exception) {
+                            println("failed to create a file")
+                            throw e
                         }
-                        ensureActive()
-                        image
-                    } catch (e: Exception) {
-                        println("failed to create a file")
-                        throw e
+                    } else {
+                        throw Exception("Failed response")
                     }
-                } else {
-                    throw Exception("Failed response")
                 }
             }
+            mutableFile.value = image
         }
-        mutableFile.value = image
     }
 }
