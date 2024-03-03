@@ -25,7 +25,11 @@ import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import baka.chaomian.booru.R
+import baka.chaomian.booru.data.FileExtension
 import baka.chaomian.booru.data.Post
 import baka.chaomian.booru.databinding.FragmentPostBinding
 import baka.chaomian.booru.viewmodel.DownloadViewModel
@@ -44,9 +48,12 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
 
     private lateinit var binding: FragmentPostBinding
     private lateinit var imageView: ImageView
+    private lateinit var playerView: PlayerView
     private lateinit var progressBar: ProgressBar
     private lateinit var post: Post
     private lateinit var filename: String
+
+    private var videoPlayer: ExoPlayer? = null
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -65,25 +72,33 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         viewModel.file.observe(viewLifecycleOwner) { file ->
-            FileInputStream(file.absolutePath).use { input ->
-                val fd = input.fd
-                val options = BitmapFactory.Options()
-                options.inJustDecodeBounds = true
-                BitmapFactory.decodeFileDescriptor(fd, null, options)
-                options.inJustDecodeBounds = false
-                // TODO
-                val scale = minOf(
-                    options.outWidth.toFloat() / resources.displayMetrics.widthPixels,
-                    options.outHeight.toFloat() / resources.displayMetrics.heightPixels,
-                    options.outWidth.toFloat() / resources.displayMetrics.heightPixels,
-                    options.outHeight.toFloat() / resources.displayMetrics.widthPixels
-                )
-                options.inSampleSize = maxOf(1, scale.toInt().takeHighestOneBit())
-                val bitmap = BitmapFactory.decodeFileDescriptor(fd, null, options)
-                imageView.setImageBitmap(bitmap)
+            if (isPicture()) {
+                FileInputStream(file.absolutePath).use { input ->
+                    val fd = input.fd
+                    val options = BitmapFactory.Options()
+                    options.inJustDecodeBounds = true
+                    BitmapFactory.decodeFileDescriptor(fd, null, options)
+                    options.inJustDecodeBounds = false
+                    // TODO
+                    val scale = minOf(
+                        options.outWidth.toFloat() / resources.displayMetrics.widthPixels,
+                        options.outHeight.toFloat() / resources.displayMetrics.heightPixels,
+                        options.outWidth.toFloat() / resources.displayMetrics.heightPixels,
+                        options.outHeight.toFloat() / resources.displayMetrics.widthPixels
+                    )
+                    options.inSampleSize = maxOf(1, scale.toInt().takeHighestOneBit())
+                    val bitmap = BitmapFactory.decodeFileDescriptor(fd, null, options)
+                    imageView.setImageBitmap(bitmap)
+                }
+            } else { // Video
+                val mediaItem = MediaItem.fromUri(getUriForFile())
+                videoPlayer!!.apply {
+                    setMediaItem(mediaItem)
+                    prepare()
+                    play()
+                }
             }
             progressBar.visibility = View.GONE
-
         }
         return super.onCreateView(inflater, container, savedInstanceState)
     }
@@ -92,6 +107,7 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
         super.onViewCreated(view, savedInstanceState)
         binding = FragmentPostBinding.bind(view)
         imageView = binding.image
+        playerView = binding.playerView
         progressBar = binding.progressBar
         val arguments = requireArguments()
         post = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -100,10 +116,19 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
             @Suppress("Deprecation")
             arguments.getParcelable(KEY_POST)!!
         }
-        filename = "${post.id}.jpg"
-        viewModel.downloadImage(post.largeUrl, filename, requireContext().cacheDir)
-        imageView.setOnClickListener {
-            requireActivity().onBackPressedDispatcher.onBackPressed()
+        filename = "${post.id}.${post.extension}"
+        viewModel.downloadFile(post.largeUrl, filename, requireContext().cacheDir)
+        if (isPicture()) {
+            imageView.setOnClickListener {
+                requireActivity().onBackPressedDispatcher.onBackPressed()
+            }
+        } else {
+            // TODO add support for ZIP videos
+            imageView.visibility = View.GONE
+            playerView.visibility = View.VISIBLE
+            videoPlayer = ExoPlayer.Builder(requireContext()).build()
+            videoPlayer!!.repeatMode = ExoPlayer.REPEAT_MODE_ONE
+            playerView.player = videoPlayer
         }
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
@@ -116,7 +141,7 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
                     R.id.view_original -> {
                         progressBar.visibility = View.VISIBLE
                         filename = ORIGINAL + filename
-                        viewModel.downloadImage(post.originalUrl, filename, requireContext().cacheDir)
+                        viewModel.downloadFile(post.originalUrl, filename, requireContext().cacheDir)
                     }
 
                     R.id.save_to_gallery -> {
@@ -128,15 +153,10 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
                     }
 
                     R.id.share -> {
-                        val fileUri: Uri =
-                            FileProvider.getUriForFile(
-                                requireContext(),
-                                requireContext().packageName + ".fileprovider",
-                                viewModel.file.value!!)
                         val shareIntent = Intent().apply {
                             action = Intent.ACTION_SEND
                             type = MIME_TYPE_IMAGE
-                            putExtra(Intent.EXTRA_STREAM, fileUri)
+                            putExtra(Intent.EXTRA_STREAM, getUriForFile())
                             setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
                         startActivity(Intent.createChooser(shareIntent, null))
@@ -145,6 +165,13 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
                 return true
             }
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    }
+
+    override fun onDestroy() {
+        if (videoPlayer != null) {
+            videoPlayer!!.release()
+        }
+        super.onDestroy()
     }
 
     private fun saveToGallery() {
@@ -164,5 +191,18 @@ class PostFragment() : Fragment(R.layout.fragment_post) {
             val file = File(requireContext().cacheDir.path, filename)
             stream!!.write(file.readBytes())
         }
+    }
+
+    private fun getUriForFile(): Uri {
+        return FileProvider.getUriForFile(
+            requireContext(),
+            requireContext().packageName + ".fileprovider",
+            viewModel.file.value!!)
+    }
+
+    private fun isPicture(): Boolean {
+        val extension = post.extension
+        return extension == FileExtension.JPG || extension == FileExtension.PNG || extension == FileExtension.WEBP ||
+                extension == FileExtension.GIF
     }
 }

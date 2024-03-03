@@ -6,13 +6,19 @@ import android.os.Parcelable
 data class Post(val id: Long,
             val previewUrl: String,
             val originalUrl: String,
-            val largeUrl: String) : Parcelable {
+            val largeUrl: String,
+            val extension: FileExtension) : Parcelable {
 
     constructor(parcel: Parcel) : this(
         parcel.readLong(),
         parcel.readString()!!,
         parcel.readString()!!,
-        parcel.readString()!!
+        parcel.readString()!!,
+        try {
+            FileExtension.valueOf(parcel.readString()!!.uppercase())
+        } catch(e: IllegalArgumentException) {
+            FileExtension.OTHER
+        }
     )
 
     override fun describeContents(): Int {

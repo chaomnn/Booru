@@ -8,5 +8,6 @@ data class DanbooruPost(
     @JsonProperty("id") val id: Long,
     @JsonProperty("preview_file_url") val previewUrl : String?, // preview
     @JsonProperty("file_url") val originalUrl : String?, // original image
-    @JsonProperty("large_file_url") val largeUrl : String? // compressed image
+    @JsonProperty("large_file_url") val largeUrl : String?, // compressed image
+    @JsonProperty("file_ext") val fileExtension : String?
 )

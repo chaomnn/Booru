@@ -23,7 +23,7 @@ class PostPagingSource(private val query: String?) : PagingSource<Int, Post>() {
                     it.previewUrl != null && it.originalUrl != null && it.largeUrl != null
                 }
                 .map {
-                    Post(it.id, it.previewUrl!!, it.originalUrl!!, it.largeUrl!!)
+                    Post(it.id, it.previewUrl!!, it.originalUrl!!, it.largeUrl!!, getExtension(it.fileExtension!!))
                 }
             val nextPage = if (posts.isEmpty()) null else page + 1
             LoadResult.Page(data = posts,
@@ -32,6 +32,14 @@ class PostPagingSource(private val query: String?) : PagingSource<Int, Post>() {
         } catch (e: Exception) {
             println("load error: $e")
             return LoadResult.Error(e)
+        }
+    }
+
+    private fun getExtension(ext: String): FileExtension {
+        return try {
+            FileExtension.valueOf(ext.uppercase())
+        } catch(e: IllegalArgumentException) {
+            FileExtension.OTHER
         }
     }
 }

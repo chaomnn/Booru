@@ -46,17 +46,17 @@ class DownloadViewModel : ViewModel() {
         }
     }
 
-    fun downloadImage(url: String, filename: String, cacheDir: File) {
+    fun downloadFile(url: String, filename: String, cacheDir: File) {
         viewModelScope.launch {
-            val image: File = withContext(Dispatchers.IO) {
+            val file: File = withContext(Dispatchers.IO) {
                 val request = Request.Builder()
                     .url(url)
                     .build()
                 client.newCall(request).await().use { response ->
                     if (response.isSuccessful) {
-                        val image = File(cacheDir, filename)
+                        val downloadedFile = File(cacheDir, filename)
                         try {
-                            Okio.buffer(Okio.sink(image)).use { sink ->
+                            Okio.buffer(Okio.sink(downloadedFile)).use { sink ->
                                 val buffer = sink.buffer()
                                 response.body()!!.source().use { source ->
                                     while (true) {
@@ -68,7 +68,7 @@ class DownloadViewModel : ViewModel() {
                                 }
                             }
                             ensureActive()
-                            image
+                            downloadedFile
                         } catch (e: Exception) {
                             println("failed to create a file")
                             throw e
@@ -78,7 +78,7 @@ class DownloadViewModel : ViewModel() {
                     }
                 }
             }
-            mutableFile.value = image
+            mutableFile.value = file
         }
     }
 }
