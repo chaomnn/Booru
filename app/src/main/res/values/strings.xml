@@ -8,7 +8,8 @@
     <string name="share">Share</string>
     <string name="error">An error occurred</string>
     <string name="missing_permission">Permission not granted</string>
-    <string name="login">Log in</string>
+    <string name="login">Sign in</string>
+    <string name="logout">Log out</string>
     <string name="username">Username</string>
-    <string name="password">Password</string>
+    <string name="api_key">API Key</string>
 </resources>

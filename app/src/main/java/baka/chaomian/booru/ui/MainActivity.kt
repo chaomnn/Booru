@@ -1,9 +1,12 @@
 package baka.chaomian.booru.ui
 
+import android.content.Context
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
@@ -13,6 +16,7 @@ import androidx.fragment.app.Fragment
 import baka.chaomian.booru.R
 import baka.chaomian.booru.data.Post
 import baka.chaomian.booru.databinding.ActivityMainBinding
+import baka.chaomian.booru.utils.LoginManager
 import com.google.android.material.navigation.NavigationView
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
@@ -20,6 +24,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private lateinit var binding: ActivityMainBinding
     private lateinit var drawerToggle: ActionBarDrawerToggle
     private lateinit var drawer: DrawerLayout
+    private lateinit var navigation: NavigationView
+    private lateinit var menu: Menu
 
     private val fragmentManager = supportFragmentManager
 
@@ -47,11 +53,20 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         setSupportActionBar(binding.toolbar)
         supportActionBar!!.setDisplayHomeAsUpEnabled(true)
         drawer = binding.drawer
-        drawerToggle = ActionBarDrawerToggle(this, drawer, 0, 0)
+        navigation = binding.navigation
+        menu = navigation.menu
+        drawerToggle = object : ActionBarDrawerToggle(this, drawer, 0, 0) {
+            override fun onDrawerOpened(drawerView: View) {
+                if (LoginManager.isUserLoggedIn) {
+                    menu.findItem(R.id.login).setTitle(R.string.logout)
+                }
+                super.onDrawerOpened(drawerView)
+            }
+        }
         drawerToggle.drawerArrowDrawable.color = Color.WHITE
         changeDrawerIconState(false)
-        binding.navigation.setNavigationItemSelectedListener(this)
-        binding.navigation.itemIconTintList = null
+        navigation.setNavigationItemSelectedListener(this)
+        navigation.itemIconTintList = null
         drawer.addDrawerListener(drawerToggle)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -68,6 +83,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 }
             }
         })
+        LoginManager.sharedPreferences = getSharedPreferences(packageName, Context.MODE_PRIVATE)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -85,13 +101,21 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 supportActionBar!!.title = getString(R.string.danbooru)
                 BooruFragment()
             }
-            R.id.login ->
-                LoginFragment()
+            R.id.login -> {
+                if (!LoginManager.isUserLoggedIn) {
+                    LoginFragment()
+                } else {
+                    LoginManager.logout()
+                    item.setTitle(R.string.login)
+                    null
+                }
+            }
             else ->
-                // TODO
                 null
         }
-        replaceFragment(fragment!!, true)
+        if (fragment != null) {
+            replaceFragment(fragment, true)
+        }
         drawer.close()
         return true
     }

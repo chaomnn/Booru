@@ -90,6 +90,22 @@ class BooruFragment : Fragment(R.layout.fragment_booru) {
             intArrayOf(android.R.id.text1),
             0
         )
+        val suggestions: ArrayList<Tag> = arrayListOf()
+        viewModel.tags.observe(viewLifecycleOwner) { tags ->
+            suggestions.clear()
+            suggestions.addAll(tags)
+            val cursor = MatrixCursor(arrayOf(
+                BaseColumns._ID,
+                SearchManager.SUGGEST_COLUMN_TEXT_1,
+                SearchManager.SUGGEST_COLUMN_INTENT_DATA
+            ))
+            suggestions.forEachIndexed { index, tag ->
+                val text = if (tag.antecedent != null) "${tag.antecedent} → ${tag.label}" else
+                    tag.label
+                cursor.addRow(arrayOf(index.toString(), text, tag.name))
+            }
+            suggestionAdapter.swapCursor(cursor)
+        }
 
         requireActivity().addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
@@ -118,7 +134,6 @@ class BooruFragment : Fragment(R.layout.fragment_booru) {
                     findViewById<SearchView.SearchAutoComplete>(androidx.appcompat.R.id.search_src_text).threshold = 1
                     queryHint = getString(R.string.search)
                     suggestionsAdapter = suggestionAdapter
-                    val suggestions: ArrayList<Tag> = arrayListOf()
                     setOnSuggestionListener(object : SearchView.OnSuggestionListener {
                         override fun onSuggestionSelect(position: Int): Boolean {
                             return false
@@ -153,21 +168,6 @@ class BooruFragment : Fragment(R.layout.fragment_booru) {
                             searchQuery = newText
                             val lastTag = searchQuery.split(" ").last()
                             viewModel.getTags(lastTag)
-                            viewModel.tags.observe(viewLifecycleOwner) { tags ->
-                                suggestions.clear()
-                                suggestions.addAll(tags)
-                                val cursor = MatrixCursor(arrayOf(
-                                    BaseColumns._ID,
-                                    SearchManager.SUGGEST_COLUMN_TEXT_1,
-                                    SearchManager.SUGGEST_COLUMN_INTENT_DATA
-                                ))
-                                suggestions.forEachIndexed { index, tag ->
-                                    val text = if (tag.antecedent != null) "${tag.antecedent} → ${tag.label}" else
-                                        tag.label
-                                    cursor.addRow(arrayOf(index.toString(), text, tag.name))
-                                }
-                                suggestionAdapter.swapCursor(cursor)
-                            }
                             return false
                         }
                     })
